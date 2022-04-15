@@ -8,19 +8,164 @@
 
 using namespace std;
 
+struct Users {
+    int usersId;
+    string userName, password;
+};
+
 struct Friends {
-    int id;
+    int id, usersId;
     string name, surname, email, phoneNumber, address;
 };
+
+int readFriendsFile (vector <Friends> &friendsDatabase) {
+    int numberOfLines = 0;
+    string idStringToBeConverted;
+    ifstream inFile("AddressBook.txt");
+
+    numberOfLines = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
+
+    inFile.seekg(0);
+
+    for (int i = 0; i < numberOfLines; i++) {
+        friendsDatabase.push_back(Friends{});
+
+        getline(inFile,idStringToBeConverted,'|');
+        friendsDatabase[i].id = stoi(idStringToBeConverted);
+
+        getline(inFile,idStringToBeConverted,'|');
+        friendsDatabase[i].usersId = stoi(idStringToBeConverted);
+
+        getline(inFile,friendsDatabase[i].name,'|');
+        getline(inFile,friendsDatabase[i].surname,'|');
+        getline(inFile,friendsDatabase[i].email,'|');
+        getline(inFile,friendsDatabase[i].phoneNumber,'|');
+        getline(inFile,friendsDatabase[i].address,'|');
+        inFile.ignore();
+    }
+    inFile.close();
+    return numberOfLines;
+}
+
+int readUsersFile (vector <Users> &usersDatabase) {
+    int numberOfLines = 0;
+    string idStringToBeConverted;
+    ifstream inFile("UsersDatabase.txt");
+
+    numberOfLines = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
+
+    inFile.seekg(0);
+
+    for (int i = 0; i < numberOfLines; i++) {
+        usersDatabase.push_back(Users{});
+
+        getline(inFile,idStringToBeConverted,'|');
+        usersDatabase[i].usersId = stoi(idStringToBeConverted);
+
+        getline(inFile,usersDatabase[i].userName,'|');
+        getline(inFile,usersDatabase[i].password,'|');
+        inFile.ignore();
+    }
+    inFile.close();
+    return numberOfLines;
+}
+
+int registration(vector <Users> usersDatabase, int numberOfUsers)
+{
+    Users temporary = {} ;
+
+    if (usersDatabase.size() == 0)
+        temporary.usersId = 1;
+    else{
+        auto lastIdIterator = usersDatabase.end();
+        --lastIdIterator;
+        temporary.usersId = lastIdIterator->usersId + 1;
+    }
+
+    cout << "Podaj nazwe uzytkownika: ";
+    cin >> temporary.userName;
+    int i = 0;
+
+    while (i < numberOfUsers)
+    {
+        if (usersDatabase[i].userName == temporary.userName)
+        {
+            cout << "Taki uzytkownik istnieje. Wpisz Nazwe uzytkownika: ";
+            cin >> temporary.userName;
+            i = 0;
+        }
+        else
+            i++;
+    }
+    cout << "Podaj haslo: ";
+    cin >> temporary.password;
+
+    usersDatabase.push_back(temporary);
+
+    cout << "Konto zalozone" << '\n';
+    Sleep(1000);
+
+    ofstream outFile;
+    outFile.open("UsersDatabase.txt", ios::out|ios::app);
+    if (outFile.good() == true) {
+        outFile << temporary.usersId << "|";
+        outFile << temporary.userName << "|";
+        outFile << temporary.password << "|";
+        outFile << '\n';
+        outFile.close();
+    }
+    return numberOfUsers+1;
+}
+
+int login(vector <Users> usersDatabase, int numberOfUsers)
+{
+    string loginUserName, loginPassword;
+
+    cout << "Podaj nazwe uzytkownika: ";
+    cin >> loginUserName;
+    int i = 0;
+
+    while (i < numberOfUsers)
+    {
+        if (usersDatabase[i].userName == loginUserName)
+        {
+            for (int tries = 0; tries < 3; tries++)
+            {
+                cout << "Podaj haslo. Pozostalo prob " << 3 - tries << ": ";
+                cin >> loginPassword;
+                if (usersDatabase[i].password == loginPassword)
+                {
+                    cout << "Zalogowales sie!" << '\n';
+                    Sleep(1000);
+                    return usersDatabase[i].usersId;
+                }
+
+            }
+            cout << "podales 3 razy bledne haslo. Poczekaj 3 sekundy przed kolejna proba" << '\n';
+            Sleep(3000);
+            return 0;
+        }
+        i++;
+    }
+    cout << "Nie ma uzytkownika z takim loginem" << '\n';
+    Sleep(1500);
+    return 0;
+}
+
+
+
+
+
 
 void overWriteExistingFile (const vector <Friends> friendsDatabase){
 
     ofstream users;
-    users.open("users.txt", ios::out | ios::trunc);
+    users.open("AddressBook.txt", ios::out | ios::trunc);
 
     for (int i = 0; i < friendsDatabase.size(); i++){
         if (users.good() == true) {
         users << friendsDatabase[i].id << "|";
+        users << friendsDatabase[i].usersId << "|";
         users << friendsDatabase[i].name << "|";
         users << friendsDatabase[i].surname << "|";
         users << friendsDatabase[i].email << "|" ;
@@ -136,7 +281,7 @@ void deleteFriendFromFile (int lineToDelete){
     string line;
 
     ifstream inFile;
-    inFile.open("users.txt");
+    inFile.open("AddressBook.txt");
 
     ofstream temporary;
     temporary.open("temp.txt",ios::out|ios::app);
@@ -149,8 +294,8 @@ void deleteFriendFromFile (int lineToDelete){
     inFile.close();
     temporary.close();
 
-    remove("users.txt");
-    rename("temp.txt", "users.txt");
+    remove("AddressBook.txt");
+    rename("temp.txt", "AddressBook.txt");
 }
 
 
@@ -197,31 +342,6 @@ void displayAll (const vector <Friends> friendsDatabase){
 }
 
 
-int readFile (vector <Friends> &friendsDatabase) {
-    int numberOfLines = 0;
-    string idStringToBeConverted;
-    ifstream inFile("users.txt");
-
-    numberOfLines = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
-
-    inFile.seekg(0);
-
-    for (int i = 0; i < numberOfLines; i++) {
-        friendsDatabase.push_back(Friends{});
-
-        getline(inFile,idStringToBeConverted,'|');
-        friendsDatabase[i].id = stoi(idStringToBeConverted);
-
-        getline(inFile,friendsDatabase[i].name,'|');
-        getline(inFile,friendsDatabase[i].surname,'|');
-        getline(inFile,friendsDatabase[i].email,'|');
-        getline(inFile,friendsDatabase[i].phoneNumber,'|');
-        getline(inFile,friendsDatabase[i].address,'|');
-        inFile.ignore();
-    }
-    inFile.close();
-    return numberOfLines;
-}
 
 void searchByName (const vector <Friends> &friendsDatabase) {
     string nameToSearch;
@@ -269,9 +389,10 @@ void searchBySurname (const vector <Friends> &friendsDatabase) {
     }
 }
 
-int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends) {
+int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends, int loggedUserId) {
 
     Friends temporary = {};     // temporary structure, which will be pushed to vector of structures
+
     if (friendsDatabase.size() == 0)
         temporary.id = 1;
     else{
@@ -279,6 +400,9 @@ int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends) {
         --lastIdIterator;
         temporary.id = lastIdIterator->id + 1;
     }
+
+    temporary.usersId = loggedUserId;
+
     cout << "Podaj imie: "<< '\n';
     cin >> temporary.name;
 
@@ -299,9 +423,10 @@ int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends) {
     cout << '\n' << "Pomyslnie dodano uzytkownika" << '\n';
 
     ofstream outFile;
-    outFile.open("users.txt", ios::out|ios::app);
+    outFile.open("AddressBook.txt", ios::out|ios::app);
     if (outFile.good() == true) {
         outFile << temporary.id << "|";
+        outFile << temporary.usersId << "|";
         outFile << temporary.name << "|";
         outFile << temporary.surname << "|";
         outFile << temporary.email << "|" ;
@@ -319,67 +444,97 @@ int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends) {
 
 int main() {
     vector <Friends> addressBook;
-    char select;
-    int numberOfFriends = 0;
+    vector <Users> usersDatabase;
 
-    numberOfFriends = readFile(addressBook);
+    char select;
+    int numberOfFriends = 0, numberOfUsers = 0;
+    int loggedUserId = 0;
+
+    numberOfFriends = readFriendsFile(addressBook);
+    numberOfUsers = readUsersFile(usersDatabase);
 
     while(1) {
-        system("cls");
-        cout << "1. Dodaj wpis" << '\n';
-        cout << "2. Szukaj po imieniu" << '\n';
-        cout << "3. Szukaj po nazwisku" << '\n';
-        cout << "4. Wyswietl wszystkich uzytkownikow" << '\n';
-        cout << "5. Usun adresata" << '\n';
-        cout << "6. Edytuj adresata" << '\n';
-        cout << "9. Zakoncz program" << '\n';
+            if (loggedUserId == 0){
+                system("cls");
+                cout << "1. Rejestracja" << endl;
+                cout << "2. Logowanie" << endl;
+                cout << "9. Zakoncz program" << endl;
+                cin >> select;
 
-        cin >> select;
-        cin.ignore();
+                switch (select){
+                case '1':
+                    numberOfUsers = registration(usersDatabase, numberOfUsers);
+                    break;
 
-        switch (select) {
-        case '1':
-            numberOfFriends = addRecord(addressBook, numberOfFriends);
-            Sleep(2000);
-            break;
+                case '2':
+                    loggedUserId = login(usersDatabase, numberOfUsers);
+                    break;
+                case '9':
+                    exit(0);
+                }
+            }
 
-        case '2':
-            searchByName(addressBook);
-            cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
-            getch();
-            break;
+            else {
+                system("cls");
+                cout << "1. Dodaj wpis" << '\n';
+                cout << "2. Szukaj po imieniu" << '\n';
+                cout << "3. Szukaj po nazwisku" << '\n';
+                cout << "4. Wyswietl wszystkich uzytkownikow" << '\n';
+                cout << "5. Usun adresata" << '\n';
+                cout << "6. Edytuj adresata" << '\n';
+                cout << "8. Wyloguj sie" << '\n';
+                cout << "9. Zakoncz program" << '\n';
 
-        case '3':
-            searchBySurname(addressBook);
-            cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
-            getch();
-            break;
+                cin >> select;
+                cin.ignore();
 
-        case '4':
-            cout << "Lista przyjaciol:"<< '\n';
-            displayAll(addressBook);
-            cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
-            getch();
-            break;
+                switch (select) {
+                case '1':
+                    numberOfFriends = addRecord(addressBook, numberOfFriends, loggedUserId);
+                    Sleep(2000);
+                    break;
 
-        case '5':
-            deleteFriend(addressBook, numberOfFriends);
-            getch();
-            break;
+                case '2':
+                    searchByName(addressBook);
+                    cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
+                    getch();
+                    break;
 
-        case '6':
-            editFriendsDatabaseMenu(addressBook);
-            break;
+                case '3':
+                    searchBySurname(addressBook);
+                    cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
+                    getch();
+                    break;
 
+                case '4':
+                    cout << "Lista przyjaciol:"<< '\n';
+                    displayAll(addressBook);
+                    cout << "Aby kontynuowac, wcisnij dowolny klawisz....";
+                    getch();
+                    break;
 
-        case '9':
-            exit(0);
+                case '5':
+                    deleteFriend(addressBook, numberOfFriends);
+                    getch();
+                    break;
 
-        default:
-            cout << "Wybierz poprawna opcje! ";
-            Sleep(2000);
-            break;
-        }
+                case '6':
+                    editFriendsDatabaseMenu(addressBook);
+                    break;
+
+                case '8':
+                    loggedUserId = 0; //logout
+                    break;
+
+                case '9':
+                    exit(0);
+
+                default:
+                    cout << "Wybierz poprawna opcje! ";
+                    Sleep(2000);
+                    break;
+                }
+            }
     }
     return 0;
 }
