@@ -5,6 +5,7 @@
 #include <conio.h>
 #include <cstdio>
 #include <fstream>
+#include <istream>
 
 using namespace std;
 
@@ -18,33 +19,64 @@ struct Friends {
     string name, surname, email, phoneNumber, address;
 };
 
-int readFriendsFile (vector <Friends> &friendsDatabase) {
-    int numberOfLines = 0;
-    string idStringToBeConverted;
-    ifstream inFile("AddressBook.txt");
+int readFriendsFile (vector <Friends> &friendsDatabase, int loggedUsersId) {
+    int numberOfLines = 0, numberOfFriends = 0;
+    int temporaryFriendsIdConvertedToInt = 0, temporaryUsersIdConvertedToInt = 0;
+
+    string friendsIdStringToBeConverted, usersIdStringToBeConverted, trashLine;
+
+    ifstream inFile("AddressBook.txt",std::ios::binary);
 
     numberOfLines = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
 
     inFile.seekg(0);
 
     for (int i = 0; i < numberOfLines; i++) {
-        friendsDatabase.push_back(Friends{});
 
-        getline(inFile,idStringToBeConverted,'|');
-        friendsDatabase[i].id = stoi(idStringToBeConverted);
+        getline(inFile,friendsIdStringToBeConverted,'|');
+        temporaryFriendsIdConvertedToInt = stoi(friendsIdStringToBeConverted);
 
-        getline(inFile,idStringToBeConverted,'|');
-        friendsDatabase[i].usersId = stoi(idStringToBeConverted);
+        getline(inFile,usersIdStringToBeConverted,'|');
+        temporaryUsersIdConvertedToInt = stoi(usersIdStringToBeConverted);
 
-        getline(inFile,friendsDatabase[i].name,'|');
-        getline(inFile,friendsDatabase[i].surname,'|');
-        getline(inFile,friendsDatabase[i].email,'|');
-        getline(inFile,friendsDatabase[i].phoneNumber,'|');
-        getline(inFile,friendsDatabase[i].address,'|');
-        inFile.ignore();
+        if (temporaryUsersIdConvertedToInt == loggedUsersId){
+            friendsDatabase.push_back(Friends{});
+
+            friendsDatabase[numberOfFriends].id = temporaryFriendsIdConvertedToInt;
+            friendsDatabase[numberOfFriends].usersId = temporaryUsersIdConvertedToInt;
+
+            getline(inFile,friendsDatabase[numberOfFriends].name,'|');
+            getline(inFile,friendsDatabase[numberOfFriends].surname,'|');
+            getline(inFile,friendsDatabase[numberOfFriends].email,'|');
+            getline(inFile,friendsDatabase[numberOfFriends].phoneNumber,'|');
+            getline(inFile,friendsDatabase[numberOfFriends].address,'|');
+            inFile.ignore();
+
+            numberOfFriends++;
+        }
+        else
+            getline(inFile,trashLine,'\n');
     }
     inFile.close();
-    return numberOfLines;
+    return numberOfFriends;
+}
+
+int readLastFriendsId (){
+    string workString = "", lastFriendsIdString = "";
+    int lastFriendsId = 0;
+
+    ifstream inFile("AddressBook.txt");
+    //totalNumberOfFriends = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
+    while (getline(inFile, workString)){
+        if (inFile.peek() == EOF){
+            auto position = workString.find('|');
+            lastFriendsIdString = workString.substr(0, position);
+            lastFriendsId = stoi(lastFriendsIdString);
+        }
+    }
+
+    inFile.close();
+    return lastFriendsId;
 }
 
 int readUsersFile (vector <Users> &usersDatabase) {
@@ -70,7 +102,7 @@ int readUsersFile (vector <Users> &usersDatabase) {
     return numberOfLines;
 }
 
-int registration(vector <Users> usersDatabase, int numberOfUsers)
+int registration(vector <Users> &usersDatabase, int numberOfUsers)
 {
     Users temporary = {} ;
 
@@ -152,32 +184,46 @@ int login(vector <Users> usersDatabase, int numberOfUsers)
     return 0;
 }
 
+void overWriteExistingFile (const vector <Friends> friendsDatabase, auto editIterator, int loggedUsersId, int idFriendToBeEddited){
+    int numberOfLines = 0, friendsIdConvertedToInt = 0, usersIdConvertedToInt = 0;
+    string friendsIdString = "", usersIdString = "", workLine = "";
 
+    ifstream inFile("AddressBook.txt");
+    ofstream temp;
+    temp.open("newTempUsers.txt",ios::out|ios::app);
 
+    numberOfLines = count(istreambuf_iterator<char>(inFile), istreambuf_iterator<char>(), '\n');
+    inFile.seekg(0);
 
+    for (int i = 0; i < numberOfLines; i++) {
 
+        getline(inFile,friendsIdString,'|');
+        friendsIdConvertedToInt = stoi(friendsIdString);
 
-void overWriteExistingFile (const vector <Friends> friendsDatabase){
+        getline(inFile,usersIdString,'|');
+        usersIdConvertedToInt = stoi(usersIdString);
 
-    ofstream users;
-    users.open("AddressBook.txt", ios::out | ios::trunc);
+        if (usersIdConvertedToInt == loggedUsersId && friendsIdConvertedToInt == idFriendToBeEddited){
 
-    for (int i = 0; i < friendsDatabase.size(); i++){
-        if (users.good() == true) {
-        users << friendsDatabase[i].id << "|";
-        users << friendsDatabase[i].usersId << "|";
-        users << friendsDatabase[i].name << "|";
-        users << friendsDatabase[i].surname << "|";
-        users << friendsDatabase[i].email << "|" ;
-        users << friendsDatabase[i].phoneNumber << "|";
-        users << friendsDatabase[i].address << "|";
-        users << '\n';
+            temp << friendsIdString << '|' << usersIdString << '|';
+            temp << editIterator->name  << '|' << editIterator->surname << '|' << editIterator->email << '|' << editIterator->phoneNumber << '|' << editIterator->address<< '|' << '\n';
+            getline(inFile,workLine, '\n');
         }
+        else{
+            temp << friendsIdString << '|' << usersIdString << '|';
+            getline(inFile,workLine,'\n');
+            temp << workLine << '\n';
+        }
+
     }
-    users.close();
+    inFile.close();
+    temp.close();
+
+    remove("AddressBook.txt");
+    rename("newTempUsers.txt", "AddressBook.txt");
 }
 
-void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
+void editFriendsDatabaseMenu (vector <Friends> friendsDatabase, int loggedUserId){
     int idOfFriendToEdit = 0;
     char select;
     cout << "Podaj ID uzytkownika do edycji: ";
@@ -208,7 +254,7 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
             cin >> newName;
             editIterator->name = newName;
             cout << "Imie uzytkownika o ID: " << idOfFriendToEdit << " zostalo edytowane. ";
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
             }
@@ -219,7 +265,7 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
             cin >> newSurname;
             editIterator->surname = newSurname;
             cout << "Nazwisko uzytkownika o ID: " << idOfFriendToEdit << " zostalo edytowane. ";
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
             }
@@ -230,7 +276,7 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
             cin >> newPhoneNumber;
             editIterator->phoneNumber = newPhoneNumber;
             cout << "Nr. telefona uzytkownika o ID: " << idOfFriendToEdit << " zostal edytowany. ";
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
             }
@@ -241,7 +287,7 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
             cin >> newEmail;
             editIterator->email = newEmail;
             cout << "E-mail uzytkownika o ID: " << idOfFriendToEdit << " zostal edytowany. ";
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
             }
@@ -253,20 +299,20 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
             getline(cin, newAddress);
             editIterator->address = newAddress;
             cout << "Adres uzytkownika o ID: " << idOfFriendToEdit << " zostal edytowany. ";
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
             }
 
         case '6':{
             goto exitEdditingMenu;
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             break;
             }
 
         default:
             cout << "Wybierz poprawna opcje!"<< '\n';
-            overWriteExistingFile(friendsDatabase);
+            overWriteExistingFile(friendsDatabase, editIterator, loggedUserId, idOfFriendToEdit);
             Sleep(2000);
             break;
         }
@@ -275,10 +321,10 @@ void editFriendsDatabaseMenu (vector <Friends> friendsDatabase){
 }
 
 
-void deleteFriendFromFile (int lineToDelete){
+void deleteFriendFromFile (int friendsIdToDelete){
 
-    int inFileCurrentLine = 1;
-    string line;
+    string line,friendsIdString;
+    int friendsIdConvertedToInt;
 
     ifstream inFile;
     inFile.open("AddressBook.txt");
@@ -286,10 +332,15 @@ void deleteFriendFromFile (int lineToDelete){
     ofstream temporary;
     temporary.open("temp.txt",ios::out|ios::app);
 
-    while (getline(inFile, line)){
-        if (inFileCurrentLine != lineToDelete)
-            temporary << line << endl;
-        inFileCurrentLine++;
+    while (getline(inFile, friendsIdString,'|')){
+        friendsIdConvertedToInt = stoi(friendsIdString);
+        if (friendsIdConvertedToInt != friendsIdToDelete){
+            temporary << friendsIdString << '|';
+            getline(inFile, line, '\n');
+            temporary << line << '\n';
+        }
+        else
+            getline(inFile,line, '\n');
     }
     inFile.close();
     temporary.close();
@@ -308,24 +359,30 @@ int deleteFriend (vector <Friends> friendsDatabase, int numberOfFriends){
     auto deleteIterator = find_if(friendsDatabase.begin(), friendsDatabase.end(), [idToDelete](const Friends& p) {
     return p.id == idToDelete;});
 
-    cout << "Czy napewno chcesz usunac uzytkownika o ponizszych danych? " << '\n';
-    cout << deleteIterator -> name  << '\n' << deleteIterator -> surname << '\n' << deleteIterator -> phoneNumber << '\n';
-    cout << deleteIterator -> email << '\n' << deleteIterator -> address << '\n';
-    cout << "Jesli tak wcisnij 't', jesli sie rozmysliles, nacisnij inny klawisz ";\
-    cin.ignore();
-    removeDecision = getchar();
+    if (deleteIterator != friendsDatabase.end()){
+        cout << "Czy napewno chcesz usunac uzytkownika o ponizszych danych? " << '\n';
+        cout << deleteIterator -> name  << '\n' << deleteIterator -> surname << '\n' << deleteIterator -> phoneNumber << '\n';
+        cout << deleteIterator -> email << '\n' << deleteIterator -> address << '\n';
+        cout << "Jesli tak wcisnij 't', jesli sie rozmysliles, nacisnij inny klawisz ";\
+        cin.ignore();
+        removeDecision = getchar();
 
-    if (removeDecision == 't'){
+        if (removeDecision == 't'){
 
-                friendsDatabase.erase(deleteIterator);
-        deleteFriendFromFile (idToDelete);
+            friendsDatabase.erase(deleteIterator);
+            deleteFriendFromFile (idToDelete);
 
-        cout << "Uzytkownik usuniety pomyslnie! Aby kontynuowac, wcisnij dowolny klawisz....";
-        return numberOfFriends - 1;
+            cout << "Uzytkownik usuniety pomyslnie! Aby kontynuowac, wcisnij dowolny klawisz....";
+            return numberOfFriends - 1;
         }
 
-    else {
-        cout << "Uzytkownik nie zostal usuniety. Aby kontynuowac, wcisnij dowolny klawisz....";
+        else {
+            cout << "Uzytkownik nie zostal usuniety. Aby kontynuowac, wcisnij dowolny klawisz....";
+            return numberOfFriends;
+        }
+    }
+    else{
+        cout << "U¿ytkownik o podanym ID nie istnieje lub nie masz praw do jego usuniecia.";
         return numberOfFriends;
     }
 }
@@ -389,17 +446,11 @@ void searchBySurname (const vector <Friends> &friendsDatabase) {
     }
 }
 
-int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends, int loggedUserId) {
+int addRecord (vector <Friends> &friendsDatabase, int numberOfFriends, int loggedUserId, int totalNumberOfFriends) {
 
     Friends temporary = {};     // temporary structure, which will be pushed to vector of structures
 
-    if (friendsDatabase.size() == 0)
-        temporary.id = 1;
-    else{
-        auto lastIdIterator = friendsDatabase.end();
-        --lastIdIterator;
-        temporary.id = lastIdIterator->id + 1;
-    }
+    temporary.id = totalNumberOfFriends + 1;
 
     temporary.usersId = loggedUserId;
 
@@ -447,18 +498,18 @@ int main() {
     vector <Users> usersDatabase;
 
     char select;
-    int numberOfFriends = 0, numberOfUsers = 0;
+    int numberOfFriends = 0, numberOfUsers = 0, lastFriendsId = 0;
     int loggedUserId = 0;
 
-    numberOfFriends = readFriendsFile(addressBook);
     numberOfUsers = readUsersFile(usersDatabase);
+    lastFriendsId = readLastFriendsId();
 
     while(1) {
             if (loggedUserId == 0){
                 system("cls");
-                cout << "1. Rejestracja" << endl;
-                cout << "2. Logowanie" << endl;
-                cout << "9. Zakoncz program" << endl;
+                cout << "1. Rejestracja" << '\n';
+                cout << "2. Logowanie" << '\n';
+                cout << "9. Zakoncz program" << '\n';
                 cin >> select;
 
                 switch (select){
@@ -468,6 +519,7 @@ int main() {
 
                 case '2':
                     loggedUserId = login(usersDatabase, numberOfUsers);
+                    numberOfFriends = readFriendsFile(addressBook, loggedUserId);
                     break;
                 case '9':
                     exit(0);
@@ -490,7 +542,8 @@ int main() {
 
                 switch (select) {
                 case '1':
-                    numberOfFriends = addRecord(addressBook, numberOfFriends, loggedUserId);
+                    numberOfFriends = addRecord(addressBook, numberOfFriends, loggedUserId, lastFriendsId);
+                    lastFriendsId++;
                     Sleep(2000);
                     break;
 
@@ -515,15 +568,17 @@ int main() {
 
                 case '5':
                     deleteFriend(addressBook, numberOfFriends);
+                    lastFriendsId = readLastFriendsId();
                     getch();
                     break;
 
                 case '6':
-                    editFriendsDatabaseMenu(addressBook);
+                    editFriendsDatabaseMenu(addressBook, loggedUserId);
                     break;
 
                 case '8':
                     loggedUserId = 0; //logout
+                    addressBook.clear();
                     break;
 
                 case '9':
